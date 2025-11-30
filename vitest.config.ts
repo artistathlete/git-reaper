@@ -5,6 +5,11 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
+    setupFiles: ['./vitest.setup.ts'],
+    testTimeout: 30000,
+    alias: {
+      '@': path.resolve(__dirname, './'),
+    },
   },
   resolve: {
     alias: {
