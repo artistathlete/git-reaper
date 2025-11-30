@@ -1,14 +1,10 @@
-import { simpleGit } from 'simple-git';
-import * as os from 'os';
-import * as path from 'path';
-import * as fs from 'fs/promises';
 import { DeadBranch } from '../types';
-import { getMergedBranches, getLastCommit } from './branch-service';
-import { cleanupTempDirectory } from './cleanup';
 
 export interface AnalyzerOptions {
   repoUrl: string;
   timeout: number;
+  onProgress?: (current: number, total: number, found: number, status?: string) => void;
+  githubToken?: string;
 }
 
 export interface AnalyzerResult {
@@ -20,35 +16,44 @@ export interface AnalyzerResult {
   };
 }
 
+interface GitHubBranch {
+  name: string;
+  commit: {
+    sha: string;
+    url: string;
+  };
+}
+
+interface GitHubCommit {
+  sha: string;
+  commit: {
+    author: {
+      date: string;
+    };
+  };
+}
+
+interface GitHubComparison {
+  status: string;
+  ahead_by: number;
+  behind_by: number;
+}
+
 /**
  * Analyze a GitHub repository to find dead branches (merged but not deleted)
- * @param options - Configuration options including repo URL and timeout
- * @returns Result object containing dead branches, temp directory path, and any errors
+ * Uses GitHub API instead of cloning - much faster and no downloads!
  */
 export async function analyzeRepository(
   options: AnalyzerOptions
 ): Promise<AnalyzerResult> {
-  const { repoUrl, timeout } = options;
+  const { repoUrl, timeout, onProgress, githubToken } = options;
   
-  // Create a unique temporary directory for this analysis
-  const tempDir = path.join(
-    os.tmpdir(),
-    `git-reaper-${Date.now()}-${Math.random().toString(36).substring(7)}`
-  );
-  
-  // Set up timeout mechanism
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => {
-    controller.abort();
-  }, timeout);
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
   
   try {
-    // Wrap the analysis in a promise that can be aborted
-    const analysisPromise = performAnalysis(repoUrl, tempDir);
-    
-    // Race between the analysis and the abort signal
     const result = await Promise.race([
-      analysisPromise,
+      performAnalysis(repoUrl, controller.signal, onProgress, githubToken),
       new Promise<never>((_, reject) => {
         controller.signal.addEventListener('abort', () => {
           reject(new Error('Analysis timeout exceeded'));
@@ -57,14 +62,13 @@ export async function analyzeRepository(
     ]);
     
     clearTimeout(timeoutId);
-    return { deadBranches: result, tempDir };
+    return { deadBranches: result, tempDir: '' };
   } catch (error) {
     clearTimeout(timeoutId);
     
-    // Check if it's a timeout error
     if (error instanceof Error && error.message === 'Analysis timeout exceeded') {
       return {
-        tempDir,
+        tempDir: '',
         error: {
           message: 'Repository analysis timed out after 90 seconds',
           code: 'TIMEOUT'
@@ -72,9 +76,8 @@ export async function analyzeRepository(
       };
     }
     
-    // Return other errors
     return {
-      tempDir,
+      tempDir: '',
       error: {
         message: error instanceof Error ? error.message : String(error),
         code: 'ANALYSIS_FAILED'
@@ -84,56 +87,106 @@ export async function analyzeRepository(
 }
 
 /**
- * Perform the actual repository analysis
- * @param repoUrl - Repository URL
- * @param tempDir - Temporary directory path
- * @returns Array of dead branches
+ * Perform analysis using GitHub API
  */
 async function performAnalysis(
   repoUrl: string,
-  tempDir: string
+  signal: AbortSignal,
+  onProgress?: (current: number, total: number, found: number, status?: string) => void,
+  githubToken?: string
 ): Promise<DeadBranch[]> {
-  // Create the temporary directory
-  await fs.mkdir(tempDir, { recursive: true });
-  
-  // Initialize simple-git with the temp directory
-  const git = simpleGit(tempDir);
-  
-  // Clone the repository with bare option for efficiency
-  await git.clone(repoUrl, tempDir, ['--bare']);
-  
-  // Detect the main branch (check for "main" first, then "master")
-  const branches = await git.branch(['--remote']);
-  let mainBranch: string | null = null;
-  
-  if (branches.all.some(b => b.includes('origin/main'))) {
-    mainBranch = 'main';
-  } else if (branches.all.some(b => b.includes('origin/master'))) {
-    mainBranch = 'master';
+  // Extract owner and repo from URL
+  const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+  if (!match) {
+    throw new Error('Invalid GitHub URL');
   }
   
-  if (!mainBranch) {
-    throw new Error('No main branch found. Repository must have either "main" or "master" branch.');
+  const [, owner, repo] = match;
+  const baseUrl = `https://api.github.com/repos/${owner}/${repo}`;
+  
+  // Setup headers with optional token
+  const headers: HeadersInit = {
+    'Accept': 'application/vnd.github.v3+json'
+  };
+  if (githubToken) {
+    headers['Authorization'] = `Bearer ${githubToken}`;
   }
   
-  // Get all merged branches
-  const mergedBranches = await getMergedBranches(git, mainBranch);
+  // Get default branch
+  if (onProgress) onProgress(0, 0, 0, 'Connecting to GitHub API...');
+  const repoResponse = await fetch(baseUrl, { signal, headers });
+  if (!repoResponse.ok) {
+    throw new Error(`Failed to fetch repository info: ${repoResponse.statusText}`);
+  }
+  const repoData = await repoResponse.json();
+  const defaultBranch = repoData.default_branch;
   
-  // Get commit information for each merged branch
+  // Get all branches
+  if (onProgress) onProgress(0, 0, 0, `Fetching branches from ${owner}/${repo}...`);
+  const branchesResponse = await fetch(`${baseUrl}/branches?per_page=100`, { signal, headers });
+  if (!branchesResponse.ok) {
+    throw new Error(`Failed to fetch branches: ${branchesResponse.statusText}`);
+  }
+  const branches: GitHubBranch[] = await branchesResponse.json();
+  
+  // Filter out the default branch
+  const otherBranches = branches.filter(b => b.name !== defaultBranch);
+  const totalBranches = otherBranches.length;
+  
+  if (onProgress) onProgress(0, totalBranches, 0, `Found ${totalBranches} branches to analyze...`);
+  
+  // Check each branch to see if it's merged
   const deadBranches: DeadBranch[] = [];
+  let currentBranch = 0;
   
-  for (const branch of mergedBranches) {
-    try {
-      const commitInfo = await getLastCommit(git, branch);
-      deadBranches.push({
-        name: branch,
-        lastCommitDate: commitInfo.date,
-        lastCommitSha: commitInfo.sha
-      });
-    } catch (error) {
-      // Skip branches that fail to retrieve commit info
-      console.error(`Failed to get commit info for branch ${branch}:`, error);
+  for (const branch of otherBranches) {
+    currentBranch++;
+    
+    // Report progress with detailed status
+    if (onProgress) {
+      onProgress(currentBranch, totalBranches, deadBranches.length, `Analyzing "${branch.name}"...`);
     }
+    
+    try {
+      // Compare branch with default branch
+      const compareResponse = await fetch(
+        `${baseUrl}/compare/${defaultBranch}...${branch.name}`,
+        { signal, headers }
+      );
+      
+      if (!compareResponse.ok) continue;
+      
+      const comparison: GitHubComparison = await compareResponse.json();
+      
+      // If ahead_by is 0, the branch is fully merged
+      if (comparison.ahead_by === 0) {
+        if (onProgress) {
+          onProgress(currentBranch, totalBranches, deadBranches.length, `"${branch.name}" is merged! Getting commit details...`);
+        }
+        
+        // Get commit details
+        const commitResponse = await fetch(
+          `${baseUrl}/commits/${branch.commit.sha}`,
+          { signal, headers }
+        );
+        
+        if (commitResponse.ok) {
+          const commitData: GitHubCommit = await commitResponse.json();
+          deadBranches.push({
+            name: branch.name,
+            lastCommitDate: commitData.commit.author.date,
+            lastCommitSha: commitData.sha
+          });
+        }
+      }
+    } catch (error) {
+      // Skip branches that fail
+      console.error(`Failed to check branch ${branch.name}:`, error);
+    }
+  }
+  
+  if (onProgress) {
+    onProgress(totalBranches, totalBranches, deadBranches.length, 'Analysis complete!');
   }
   
   return deadBranches;

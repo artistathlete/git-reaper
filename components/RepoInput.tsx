@@ -1,2 +1,52 @@
-// Repository input component
-// This file will be populated in task 6.1
+'use client';
+
+import React, { useState, ChangeEvent, FormEvent } from 'react';
+import { validateGitHubUrl } from '@/lib/validators';
+
+interface RepoInputProps {
+  onSubmit: (url: string) => void;
+  isLoading: boolean;
+}
+
+export default function RepoInput({ onSubmit, isLoading }: RepoInputProps) {
+  const [url, setUrl] = useState('');
+  const [isValid, setIsValid] = useState(false);
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setUrl(value);
+    
+    // Validate URL on input change
+    const validation = validateGitHubUrl(value);
+    setIsValid(validation.isValid);
+  };
+
+  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (isValid && !isLoading) {
+      onSubmit(url);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="repo-input-form">
+      <div className="input-container">
+        <input
+          type="text"
+          value={url}
+          onChange={handleInputChange}
+          placeholder="https://github.com/owner/repo"
+          className="repo-input"
+          disabled={isLoading}
+        />
+        <button
+          type="submit"
+          className="reap-button"
+          disabled={!isValid || isLoading}
+        >
+          {isLoading ? 'Reaping...' : 'Reap'}
+        </button>
+      </div>
+    </form>
+  );
+}

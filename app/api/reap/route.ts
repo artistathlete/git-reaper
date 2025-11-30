@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { validateGitHubUrl } from '@/lib/validators';
 import { analyzeRepository } from '@/lib/git/analyzer';
-import { cleanupTempDirectory } from '@/lib/git/cleanup';
 import {
   ReapRequest,
   ReapSuccessResponse,
@@ -13,8 +12,6 @@ import {
  * Analyzes a GitHub repository to find dead branches (merged but not deleted)
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  let tempDir: string | null = null;
-
   try {
     // Parse and validate request body
     let body: unknown;
@@ -37,7 +34,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(errorResponse, { status: 400 });
     }
 
-    const { githubUrl } = body as ReapRequest;
+    const { githubUrl, githubToken } = body as ReapRequest & { githubToken?: string };
 
     // Validate GitHub URL
     const validationResult = validateGitHubUrl(githubUrl);
@@ -49,43 +46,83 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       return NextResponse.json(errorResponse, { status: 400 });
     }
 
-    // Analyze the repository
-    const analysisResult = await analyzeRepository({
-      repoUrl: githubUrl,
-      timeout: 90000, // 90 seconds
+    // Create a streaming response
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        let tokenUsed = 'none';
+        
+        // Try without token first (GitHub's free 60 requests)
+        let analysisResult = await analyzeRepository({
+          repoUrl: githubUrl,
+          timeout: 90000,
+          githubToken: githubToken || undefined,
+          onProgress: (current, total, found, status) => {
+            const progressData = JSON.stringify({
+              type: 'progress',
+              current,
+              total,
+              found,
+              status
+            });
+            controller.enqueue(encoder.encode(`data: ${progressData}\n\n`));
+          }
+        });
+
+        // If rate limited and no user token, try with server token
+        if (analysisResult.error?.message.includes('rate limit') && !githubToken && process.env.GITHUB_TOKEN) {
+          tokenUsed = 'server';
+          analysisResult = await analyzeRepository({
+            repoUrl: githubUrl,
+            timeout: 90000,
+            githubToken: process.env.GITHUB_TOKEN,
+            onProgress: (current, total, found, status) => {
+              const progressData = JSON.stringify({
+                type: 'progress',
+                current,
+                total,
+                found,
+                status
+              });
+              controller.enqueue(encoder.encode(`data: ${progressData}\n\n`));
+            }
+          });
+        } else if (githubToken) {
+          tokenUsed = 'user';
+        }
+
+        // Check if analysis encountered an error
+        if (analysisResult.error) {
+          const errorData = JSON.stringify({
+            type: 'error',
+            error: analysisResult.error.message,
+            code: analysisResult.error.code,
+            tokenUsed
+          });
+          controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
+        } else {
+          // Send completion data
+          const completeData = JSON.stringify({
+            type: 'complete',
+            deadBranches: analysisResult.deadBranches || [],
+            repositoryUrl: githubUrl,
+            analyzedAt: new Date().toISOString(),
+            tokenUsed
+          });
+          controller.enqueue(encoder.encode(`data: ${completeData}\n\n`));
+        }
+
+        controller.close();
+      }
     });
 
-    tempDir = analysisResult.tempDir;
-
-    // Check if analysis encountered an error
-    if (analysisResult.error) {
-      const { message, code } = analysisResult.error;
-      
-      // Map error codes to appropriate HTTP status codes
-      let statusCode = 500;
-      if (code === 'TIMEOUT') {
-        statusCode = 408;
-      } else if (message.includes('not found') || message.includes('does not exist')) {
-        statusCode = 404;
-      } else if (message.includes('No main branch found')) {
-        statusCode = 400;
-      }
-
-      const errorResponse: ReapErrorResponse = {
-        error: message,
-        code: code,
-      };
-      return NextResponse.json(errorResponse, { status: statusCode });
-    }
-
-    // Format success response
-    const successResponse: ReapSuccessResponse = {
-      deadBranches: analysisResult.deadBranches || [],
-      repositoryUrl: githubUrl,
-      analyzedAt: new Date().toISOString(),
-    };
-
-    return NextResponse.json(successResponse, { status: 200 });
+    return new NextResponse(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
   } catch (error) {
     // Handle unexpected errors
     const errorResponse: ReapErrorResponse = {
@@ -94,15 +131,5 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       details: error instanceof Error ? error.message : String(error),
     };
     return NextResponse.json(errorResponse, { status: 500 });
-  } finally {
-    // Ensure cleanup happens regardless of success or failure
-    if (tempDir) {
-      try {
-        await cleanupTempDirectory(tempDir);
-      } catch (cleanupError) {
-        // Log cleanup errors but don't fail the request
-        console.error('Failed to cleanup temporary directory:', cleanupError);
-      }
-    }
   }
 }

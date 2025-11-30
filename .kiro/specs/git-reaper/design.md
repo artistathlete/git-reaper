@@ -85,17 +85,20 @@ interface GraveyardProps {
 - Displays grid of tombstone components
 - Sorts dead branches by last commit date (newest to oldest) before rendering
 - Shows a user-friendly empty state when no dead branches exist, such as "This repository is clean! No dead branches found."
+- Renders atmospheric effects like floating ghosts or fog animations
 
 #### 4. Tombstone Component
 ```typescript
 interface TombstoneProps {
   branch: DeadBranch;
   repositoryUrl: string;
+  index?: number; // For staggered animation delay
 }
 ```
 - Renders individual tombstone with branch name and date
 - Handles click events to open GitHub commit URL
 - Applies hover effects and styling
+- Implements entrance animation with staggered delay based on index
 
 ### Backend Components
 
@@ -264,6 +267,10 @@ interface ValidationResult {
 ### Property 16: Tombstone Click Navigation
 *For any* tombstone component, clicking it should open a new browser tab with the GitHub URL pointing to the last commit of that branch.
 **Validates: Requirements 9.1**
+
+### Property 17: Tombstone Animation Stagger
+*For any* list of dead branches, when rendered, each tombstone should have a staggered animation delay based on its index in the list, creating a sequential appearance effect.
+**Validates: Requirements 10.1**
 
 ## Error Handling
 

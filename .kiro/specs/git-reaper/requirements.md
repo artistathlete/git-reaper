@@ -108,3 +108,13 @@ The Git Reaper is a web application that analyzes public GitHub repositories to 
 #### Acceptance Criteria
 
 1. WHEN a user clicks a tombstone THEN the system SHALL open the corresponding last commit URL of that branch on GitHub in a new browser tab
+
+### Requirement 10
+
+**User Story:** As a repository maintainer, I want to see an engaging graveyard animation when results appear, so that the interface feels more immersive and thematic.
+
+#### Acceptance Criteria
+
+1. WHEN dead branches are loaded and displayed THEN the system SHALL animate tombstones appearing with a staggered entrance effect
+2. WHEN the graveyard is displayed THEN the system SHALL show atmospheric visual effects such as floating ghosts or fog
+3. WHEN tombstones appear THEN the system SHALL use smooth transitions that enhance the graveyard theme without disrupting readability
