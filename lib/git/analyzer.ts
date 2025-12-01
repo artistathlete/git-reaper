@@ -87,7 +87,7 @@ export async function analyzeRepository(
 }
 
 /**
- * Perform analysis using GitHub API
+ * Perform analysis using GitHub API with parallel processing
  */
 async function performAnalysis(
   repoUrl: string,
@@ -116,18 +116,36 @@ async function performAnalysis(
   if (onProgress) onProgress(0, 0, 0, 'Connecting to GitHub API...');
   const repoResponse = await fetch(baseUrl, { signal, headers });
   if (!repoResponse.ok) {
+    if (repoResponse.status === 403) {
+      const rateLimitResponse = await fetch('https://api.github.com/rate_limit', { headers });
+      if (rateLimitResponse.ok) {
+        const rateLimitData = await rateLimitResponse.json();
+        if (rateLimitData.resources?.core?.remaining === 0) {
+          throw new Error('GitHub API rate limit exceeded. Please provide a GitHub token or wait for the rate limit to reset.');
+        }
+      }
+    }
     throw new Error(`Failed to fetch repository info: ${repoResponse.statusText}`);
   }
   const repoData = await repoResponse.json();
   const defaultBranch = repoData.default_branch;
   
-  // Get all branches
+  // Get all branches (handle pagination)
   if (onProgress) onProgress(0, 0, 0, `Fetching branches from ${owner}/${repo}...`);
-  const branchesResponse = await fetch(`${baseUrl}/branches?per_page=100`, { signal, headers });
-  if (!branchesResponse.ok) {
-    throw new Error(`Failed to fetch branches: ${branchesResponse.statusText}`);
+  const branches: GitHubBranch[] = [];
+  let page = 1;
+  let hasMore = true;
+  
+  while (hasMore) {
+    const branchesResponse = await fetch(`${baseUrl}/branches?per_page=100&page=${page}`, { signal, headers });
+    if (!branchesResponse.ok) {
+      throw new Error(`Failed to fetch branches: ${branchesResponse.statusText}`);
+    }
+    const pageBranches: GitHubBranch[] = await branchesResponse.json();
+    branches.push(...pageBranches);
+    hasMore = pageBranches.length === 100;
+    page++;
   }
-  const branches: GitHubBranch[] = await branchesResponse.json();
   
   // Filter out the default branch
   const otherBranches = branches.filter(b => b.name !== defaultBranch);
@@ -135,53 +153,67 @@ async function performAnalysis(
   
   if (onProgress) onProgress(0, totalBranches, 0, `Found ${totalBranches} branches to analyze...`);
   
-  // Check each branch to see if it's merged
+  // Process branches in parallel batches for speed
+  const BATCH_SIZE = 10; // Process 10 branches at a time
   const deadBranches: DeadBranch[] = [];
-  let currentBranch = 0;
+  let completed = 0;
   
-  for (const branch of otherBranches) {
-    currentBranch++;
+  for (let i = 0; i < otherBranches.length; i += BATCH_SIZE) {
+    const batch = otherBranches.slice(i, i + BATCH_SIZE);
     
-    // Report progress with detailed status
-    if (onProgress) {
-      onProgress(currentBranch, totalBranches, deadBranches.length, `Analyzing "${branch.name}"...`);
-    }
+    // Process batch in parallel
+    const batchResults = await Promise.allSettled(
+      batch.map(async (branch) => {
+        try {
+          // Compare branch with default branch
+          const compareResponse = await fetch(
+            `${baseUrl}/compare/${defaultBranch}...${branch.name}`,
+            { signal, headers }
+          );
+          
+          if (!compareResponse.ok) return null;
+          
+          const comparison: GitHubComparison = await compareResponse.json();
+          
+          // If ahead_by is 0, the branch is fully merged
+          if (comparison.ahead_by === 0) {
+            // Get commit details
+            const commitResponse = await fetch(
+              `${baseUrl}/commits/${branch.commit.sha}`,
+              { signal, headers }
+            );
+            
+            if (commitResponse.ok) {
+              const commitData: GitHubCommit = await commitResponse.json();
+              // Ensure commit data has required structure
+              if (commitData?.commit?.author?.date) {
+                return {
+                  name: branch.name,
+                  lastCommitDate: commitData.commit.author.date,
+                  lastCommitSha: commitData.sha
+                };
+              }
+            }
+          }
+          return null;
+        } catch (error) {
+          console.error(`Failed to check branch ${branch.name}:`, error);
+          return null;
+        }
+      })
+    );
     
-    try {
-      // Compare branch with default branch
-      const compareResponse = await fetch(
-        `${baseUrl}/compare/${defaultBranch}...${branch.name}`,
-        { signal, headers }
-      );
-      
-      if (!compareResponse.ok) continue;
-      
-      const comparison: GitHubComparison = await compareResponse.json();
-      
-      // If ahead_by is 0, the branch is fully merged
-      if (comparison.ahead_by === 0) {
-        if (onProgress) {
-          onProgress(currentBranch, totalBranches, deadBranches.length, `"${branch.name}" is merged! Getting commit details...`);
-        }
-        
-        // Get commit details
-        const commitResponse = await fetch(
-          `${baseUrl}/commits/${branch.commit.sha}`,
-          { signal, headers }
-        );
-        
-        if (commitResponse.ok) {
-          const commitData: GitHubCommit = await commitResponse.json();
-          deadBranches.push({
-            name: branch.name,
-            lastCommitDate: commitData.commit.author.date,
-            lastCommitSha: commitData.sha
-          });
-        }
+    // Collect results from batch
+    for (const result of batchResults) {
+      completed++;
+      if (result.status === 'fulfilled' && result.value) {
+        deadBranches.push(result.value);
       }
-    } catch (error) {
-      // Skip branches that fail
-      console.error(`Failed to check branch ${branch.name}:`, error);
+      
+      // Report progress after each branch completes
+      if (onProgress) {
+        onProgress(completed, totalBranches, deadBranches.length, `Analyzed ${completed}/${totalBranches} branches...`);
+      }
     }
   }
   

@@ -27,34 +27,60 @@ describe('Repository Analyzer (GitHub API)', () => {
   ];
 
   it('should identify merged branches correctly', async () => {
-    // 1. Repo Info Response
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockRepoInfo,
-    });
-
-    // 2. Branches Response
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockBranches,
-    });
-
-    // 3. Compare feature/dead (merged)
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ status: 'identical', ahead_by: 0, behind_by: 5 }),
-    });
-
-    // 4. Get commit info for feature/dead
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ sha: 'sha-dead', commit: { author: { date: '2023-01-01T00:00:00Z' } } }),
-    });
-
-    // 5. Compare feature/active (not merged)
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ status: 'ahead', ahead_by: 2, behind_by: 0 }),
+    // Mock implementation that handles any order of calls
+    mockFetch.mockImplementation(async (url: string) => {
+      // Repo info
+      if (url.includes('/repos/owner/repo') && !url.includes('branches') && !url.includes('compare') && !url.includes('commits')) {
+        return {
+          ok: true,
+          json: async () => mockRepoInfo,
+        };
+      }
+      
+      // Branches list
+      if (url.includes('/branches')) {
+        return {
+          ok: true,
+          json: async () => mockBranches,
+        };
+      }
+      
+      // Compare endpoints
+      if (url.includes('/compare/main...feature/dead')) {
+        return {
+          ok: true,
+          json: async () => ({ status: 'identical', ahead_by: 0, behind_by: 5 }),
+        };
+      }
+      
+      if (url.includes('/compare/main...feature/active')) {
+        return {
+          ok: true,
+          json: async () => ({ status: 'ahead', ahead_by: 2, behind_by: 0 }),
+        };
+      }
+      
+      // Commit info
+      if (url.includes('/commits/sha-dead')) {
+        return {
+          ok: true,
+          json: async () => ({ 
+            sha: 'sha-dead', 
+            commit: { 
+              author: { 
+                date: '2023-01-01T00:00:00Z' 
+              } 
+            } 
+          }),
+        };
+      }
+      
+      // Default fallback
+      return {
+        ok: false,
+        status: 404,
+        statusText: 'Not Found'
+      };
     });
 
     const result = await analyzeRepository({
