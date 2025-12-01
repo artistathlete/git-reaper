@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { DeadBranch } from '@/lib/types';
+import styles from './Tombstone.module.css';
 
 interface TombstoneProps {
   branch: DeadBranch;
@@ -36,7 +37,8 @@ export default function Tombstone({ branch, repositoryUrl, index = 0 }: Tombston
 
   return (
     <div 
-      className="tombstone"
+      className={styles.tombstone}
+      data-testid="tombstone"
       onClick={handleClick}
       role="button"
       tabIndex={0}
@@ -50,10 +52,10 @@ export default function Tombstone({ branch, repositoryUrl, index = 0 }: Tombston
         animationDelay,
       }}
     >
-      <div className="tombstone-top"></div>
-      <div className="tombstone-body">
-        <div className="branch-name">{branch.name}</div>
-        <div className="commit-date">{formatDate(branch.lastCommitDate)}</div>
+      <div className={styles.tombstoneTop}></div>
+      <div className={styles.tombstoneBody}>
+        <div className={styles.branchName}>{branch.name}</div>
+        <div className={styles.commitDate}>{formatDate(branch.lastCommitDate)}</div>
       </div>
     </div>
   );

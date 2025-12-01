@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { FaSkull, FaBookDead, FaHourglassHalf, FaCalendarAlt, FaExclamationTriangle } from 'react-icons/fa';
 import RepoInput from '@/components/RepoInput';
 import Graveyard from '@/components/Graveyard';
 import FloatingGhosts from '@/components/FloatingGhosts';
@@ -95,7 +96,7 @@ export default function Home() {
       <FloatingGhosts />
       <main>
         <div className="header">
-        <h1>Git Reaper</h1>
+        <h1><FaSkull /> Git Reaper <FaSkull /></h1>
         <p>Find dead branches in your GitHub repositories</p>
       </div>
 
@@ -289,10 +290,12 @@ export default function Home() {
               <h2>📊 Repository Stats</h2>
               <div className="stats-grid">
                 <div className="stat-card">
+                  <div className="stat-icon"><FaBookDead /></div>
                   <div className="stat-number">{results.length}</div>
                   <div className="stat-label">Dead Branches</div>
                 </div>
                 <div className="stat-card">
+                  <div className="stat-icon"><FaHourglassHalf /></div>
                   <div className="stat-number">
                     {Math.round((results.reduce((sum, branch) => {
                       const daysSince = Math.floor((Date.now() - new Date(branch.lastCommitDate).getTime()) / (1000 * 60 * 60 * 24));
@@ -302,6 +305,7 @@ export default function Home() {
                   <div className="stat-label">Avg Days Since Last Commit</div>
                 </div>
                 <div className="stat-card">
+                  <div className="stat-icon"><FaCalendarAlt /></div>
                   <div className="stat-number">
                     {(() => {
                       const oldest = results.reduce((oldest, branch) => {
@@ -316,7 +320,7 @@ export default function Home() {
               </div>
               
               <div className="suggestions-box">
-                <h3>💡 Cleanup Suggestions</h3>
+                <h3><FaExclamationTriangle /> Cleanup Suggestions</h3>
                 <ul>
                   <li>Review each branch before deletion to ensure no important work is lost</li>
                   <li>Consider creating a backup or tag before removing branches</li>

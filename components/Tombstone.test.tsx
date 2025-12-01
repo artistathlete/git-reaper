@@ -41,16 +41,16 @@ describe('Tombstone Component', () => {
         windowOpenSpy.mockClear();
 
         // Render the Tombstone component
-        const { container, unmount } = render(<Tombstone branch={branch} repositoryUrl={repositoryUrl} />);
+        const { getByTestId, unmount } = render(<Tombstone branch={branch} repositoryUrl={repositoryUrl} />);
         
         // Find the tombstone element
-        const tombstone = container.querySelector('.tombstone');
+        const tombstone = getByTestId('tombstone');
         expect(tombstone).toBeDefined();
         expect(tombstone).not.toBeNull();
 
         // Simulate a click on the tombstone
         const user = userEvent.setup();
-        await user.click(tombstone!);
+        await user.click(tombstone);
 
         // Extract owner and repo from the repository URL
         const match = repositoryUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
@@ -148,6 +148,52 @@ describe('Tombstone Component', () => {
     );
   });
 
+  // Feature: git-reaper, Property 17: Tombstone Animation Stagger
+  // Validates: Requirements 10.1
+  it('property test: each tombstone has appropriate animation delay based on index', () => {
+    // Generator for arrays of DeadBranch objects
+    const deadBranchArrayArbitrary = fc.array(
+      fc.record({
+        name: fc.string({ minLength: 1, maxLength: 100 }),
+        lastCommitDate: fc.date({ min: new Date('2020-01-01'), max: new Date('2024-12-31') })
+          .map(d => d.toISOString().split('T')[0]),
+        lastCommitSha: fc.hexaString({ minLength: 40, maxLength: 40 }),
+      }),
+      { minLength: 0, maxLength: 20 } // Test with 0 to 20 branches
+    );
+
+    // Generator for repository URLs
+    const repoUrlArbitrary = fc.record({
+      owner: fc.stringMatching(/^[a-zA-Z0-9_-]{1,39}$/),
+      repo: fc.stringMatching(/^[a-zA-Z0-9_.-]{1,100}$/),
+    }).map(({ owner, repo }) => `https://github.com/${owner}/${repo}`);
+
+    fc.assert(
+      fc.property(deadBranchArrayArbitrary, repoUrlArbitrary, (branches, repositoryUrl) => {
+        // For each branch in the array, verify the animation delay is correct
+        branches.forEach((branch, index) => {
+          const { getByTestId, unmount } = render(
+            <Tombstone branch={branch} repositoryUrl={repositoryUrl} index={index} />
+          );
+          
+          const tombstone = getByTestId('tombstone') as HTMLElement;
+          expect(tombstone).not.toBeNull();
+          
+          // Calculate expected animation delay (100ms per tombstone = index * 0.1 seconds)
+          const expectedDelay = `${index * 0.1}s`;
+          
+          // Verify the animation delay is set correctly in the style attribute
+          const actualDelay = tombstone.style.animationDelay;
+          expect(actualDelay).toBe(expectedDelay);
+          
+          // Clean up
+          unmount();
+        });
+      }),
+      { numRuns: 100 }
+    );
+  });
+
   // Unit Tests - Requirements: 3.3
   it('displays branch name and formatted date', () => {
     const mockBranch: DeadBranch = {
@@ -181,5 +227,53 @@ describe('Tombstone Component', () => {
     // Should display a formatted date
     const dateElement = screen.getByText(/2023/);
     expect(dateElement).toBeDefined();
+  });
+
+  // Unit Tests - Requirements: 10.1, 10.2
+  it('applies correct animation delay based on index', () => {
+    const mockBranch: DeadBranch = {
+      name: 'feature/test',
+      lastCommitDate: '2024-01-15',
+      lastCommitSha: 'abc123def456abc123def456abc123def456abc1'
+    };
+    
+    // Test with index 0
+    const { getByTestId: getByTestId0, unmount: unmount0 } = render(
+      <Tombstone branch={mockBranch} repositoryUrl="https://github.com/test/repo" index={0} />
+    );
+    const tombstone0 = getByTestId0('tombstone') as HTMLElement;
+    expect(tombstone0.style.animationDelay).toBe('0s');
+    unmount0();
+    
+    // Test with index 5
+    const { getByTestId: getByTestId5, unmount: unmount5 } = render(
+      <Tombstone branch={mockBranch} repositoryUrl="https://github.com/test/repo" index={5} />
+    );
+    const tombstone5 = getByTestId5('tombstone') as HTMLElement;
+    expect(tombstone5.style.animationDelay).toBe('0.5s');
+    unmount5();
+    
+    // Test with index 10
+    const { getByTestId: getByTestId10, unmount: unmount10 } = render(
+      <Tombstone branch={mockBranch} repositoryUrl="https://github.com/test/repo" index={10} />
+    );
+    const tombstone10 = getByTestId10('tombstone') as HTMLElement;
+    expect(tombstone10.style.animationDelay).toBe('1s');
+    unmount10();
+  });
+
+  it('defaults to index 0 when index prop is not provided', () => {
+    const mockBranch: DeadBranch = {
+      name: 'feature/test',
+      lastCommitDate: '2024-01-15',
+      lastCommitSha: 'abc123def456abc123def456abc123def456abc1'
+    };
+    
+    const { getByTestId } = render(
+      <Tombstone branch={mockBranch} repositoryUrl="https://github.com/test/repo" />
+    );
+    
+    const tombstone = getByTestId('tombstone') as HTMLElement;
+    expect(tombstone.style.animationDelay).toBe('0s');
   });
 });

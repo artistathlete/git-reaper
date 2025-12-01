@@ -94,4 +94,59 @@ describe('Graveyard Component', () => {
     // Should not show empty state
     expect(screen.queryByText('This repository is clean! No dead branches found.')).toBeNull();
   });
+
+  // Unit Tests - Requirements: 10.1, 10.2
+  it('passes index prop to tombstones for staggered animation', () => {
+    const mockBranches: DeadBranch[] = [
+      {
+        name: 'feature/first',
+        lastCommitDate: '2024-03-01',
+        lastCommitSha: 'abc123def456abc123def456abc123def456abc1'
+      },
+      {
+        name: 'feature/second',
+        lastCommitDate: '2024-02-15',
+        lastCommitSha: 'def456abc123def456abc123def456abc123def4'
+      },
+      {
+        name: 'feature/third',
+        lastCommitDate: '2024-01-10',
+        lastCommitSha: '123456789012345678901234567890123456789a'
+      }
+    ];
+    
+    const { container } = render(<Graveyard deadBranches={mockBranches} repositoryUrl="https://github.com/test/repo" />);
+    
+    // Get all tombstone elements
+    const tombstones = container.querySelectorAll('[data-testid="tombstone"]') as NodeListOf<HTMLElement>;
+    
+    // Should render 3 tombstones
+    expect(tombstones.length).toBe(3);
+    
+    // Each tombstone should have an animation delay based on its index
+    // Index 0: 0s, Index 1: 0.1s, Index 2: 0.2s
+    expect(tombstones[0].style.animationDelay).toBe('0s');
+    expect(tombstones[1].style.animationDelay).toBe('0.1s');
+    expect(tombstones[2].style.animationDelay).toBe('0.2s');
+  });
+
+  it('renders FloatingGhosts component for atmospheric effects', () => {
+    const mockBranches: DeadBranch[] = [
+      {
+        name: 'feature/test',
+        lastCommitDate: '2024-01-15',
+        lastCommitSha: 'abc123def456abc123def456abc123def456abc1'
+      }
+    ];
+    
+    const { container } = render(<Graveyard deadBranches={mockBranches} repositoryUrl="https://github.com/test/repo" />);
+    
+    // Should render the FloatingGhosts container
+    const ghostContainer = container.querySelector('.floating-ghosts-container');
+    expect(ghostContainer).not.toBeNull();
+    
+    // Should render ghost elements
+    const ghosts = container.querySelectorAll('.floating-ghost');
+    expect(ghosts.length).toBe(5);
+  });
 });

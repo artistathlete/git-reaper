@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, ChangeEvent, FormEvent } from 'react';
+import { FaGithub, FaSkullCrossbones } from 'react-icons/fa';
 import { validateGitHubUrl } from '@/lib/validators';
 
 interface RepoInputProps {
@@ -31,20 +32,24 @@ export default function RepoInput({ onSubmit, isLoading }: RepoInputProps) {
   return (
     <form onSubmit={handleSubmit} className="repo-input-form">
       <div className="input-container">
-        <input
-          type="text"
-          value={url}
-          onChange={handleInputChange}
-          placeholder="https://github.com/owner/repo"
-          className="repo-input"
-          disabled={isLoading}
-        />
+        <div className="input-wrapper">
+          <FaGithub className="input-icon" />
+          <input
+            type="text"
+            value={url}
+            onChange={handleInputChange}
+            placeholder="https://github.com/owner/repo"
+            className="repo-input"
+            disabled={isLoading}
+          />
+        </div>
         <button
           type="submit"
           className="reap-button"
           disabled={!isValid || isLoading}
         >
-          {isLoading ? 'Reaping...' : 'Reap'}
+          <FaSkullCrossbones className="button-icon" />
+          {isLoading ? 'REAPING...' : 'REAP'}
         </button>
       </div>
     </form>

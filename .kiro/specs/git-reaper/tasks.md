@@ -421,32 +421,57 @@
     - Ensure animations don't interfere with readability or interaction
     - _Requirements: 10.2_
 
-  - [ ]* 10.4 Write property test for animation stagger
+  - [x] 10.4 Write property test for animation stagger
+
+
+
+
+
+
+
     - **Property 17: Tombstone Animation Stagger**
     - **Validates: Requirements 10.1**
     - Generate arrays of DeadBranch objects
     - Verify each tombstone has appropriate animation delay based on index
 
-  - [ ]* 10.5 Write unit tests for animation components
+  - [x] 10.5 Write unit tests for animation components
+
+
+
+
+
+
+
     - Test FloatingGhosts component renders ghost elements
     - Test Tombstone component applies correct animation delay
     - Test Graveyard passes index prop to tombstones
     - _Requirements: 10.1, 10.2_
 
-- [ ] 11. Update design system with new theme and fonts
+- [x] 11. Update design system with new theme and fonts
 
-  - [ ] 11.1 Install react-icons library
+
+
+
+
+
+  - [x] 11.1 Install react-icons library
+
+
     - Run `npm install react-icons` to add icon library
     - Verify installation in package.json
     - _Requirements: All (UI Enhancement)_
 
-  - [ ] 11.2 Import Google Fonts in globals.css
+  - [x] 11.2 Import Google Fonts in globals.css
+
+
     - Add Google Fonts import at the top of `app/globals.css`
     - Import "Creepster" font for headings
     - Import "Inter" font for body text
     - _Requirements: All (UI Enhancement)_
 
-  - [ ] 11.3 Define CSS variables for new color palette
+  - [x] 11.3 Define CSS variables for new color palette
+
+
     - Add `:root` selector in `app/globals.css`
     - Define `--background: #0d1117;`
     - Define `--panels: #161b22;`
@@ -456,108 +481,155 @@
     - Define `--accent: #3fb950;`
     - _Requirements: All (UI Enhancement)_
 
-  - [ ] 11.4 Apply new design system to body element
+  - [x] 11.4 Apply new design system to body element
+
+
     - Update `body` background to use `var(--background)`
     - Set default font-family to "Inter", sans-serif
     - Set default text color to `var(--text-secondary)`
     - _Requirements: All (UI Enhancement)_
 
-  - [ ] 11.5 Update heading styles to use Creepster font
+  - [x] 11.5 Update heading styles to use Creepster font
+
+
     - Apply "Creepster" font to all heading elements (h1, h2, h3, etc.)
     - Ensure headings use `var(--text-primary)` color
     - _Requirements: All (UI Enhancement)_
 
-  - [ ] 11.6 Refactor existing styles to use CSS variables
+  - [x] 11.6 Refactor existing styles to use CSS variables
+
+
     - Replace hardcoded colors with CSS variables throughout globals.css
     - Update panel backgrounds to use `var(--panels)`
     - Update borders to use `var(--borders)`
     - Update accent colors to use `var(--accent)`
     - _Requirements: All (UI Enhancement)_
 
-- [ ] 12. Redesign header and input form with new icons
+- [x] 12. Redesign header and input form with new icons
 
-  - [ ] 12.1 Update main h1 title styling
+
+
+
+
+
+  - [x] 12.1 Update main h1 title styling
+
+
     - Apply "Creepster" font to the "Git Reaper" h1 title
     - Increase font size to make it larger and more prominent
     - Add `text-shadow` using `var(--accent)` color for glow effect
     - _Requirements: All (UI Enhancement)_
 
-  - [ ] 12.2 Add skull icons to header title
+  - [x] 12.2 Add skull icons to header title
+
+
     - Import `FaSkull` from `react-icons/fa`
     - Add `<FaSkull />` icon before the title text
     - Add `<FaSkull />` icon after the title text
     - Style icons to match the title aesthetic
     - _Requirements: All (UI Enhancement)_
 
-  - [ ] 12.3 Add GitHub icon to input field
+  - [x] 12.3 Add GitHub icon to input field
+
+
     - Import `FaGithub` from `react-icons/fa`
     - Position `<FaGithub />` icon inside the input field on the left side
     - Adjust input padding to accommodate the icon
     - Style icon with appropriate color and size
     - _Requirements: 1.1 (UI Enhancement)_
 
-  - [ ] 12.4 Increase input field size
+  - [x] 12.4 Increase input field size
+
+
     - Make the URL input field larger with increased padding
     - Adjust font size for better readability
     - Ensure responsive design is maintained
     - _Requirements: 1.1 (UI Enhancement)_
 
-  - [ ] 12.5 Redesign REAP button with accent color
+  - [x] 12.5 Redesign REAP button with accent color
+
+
     - Update button background to use `var(--accent)` color
     - Make button text bold and uppercase
     - Import `FaScythe` from `react-icons/fa` (or use alternative icon if not available)
     - Replace existing button icon with `<FaScythe />` or similar reaper-themed icon
     - _Requirements: 1.4, 2.1 (UI Enhancement)_
 
-  - [ ] 12.6 Add hover effect to REAP button
+  - [x] 12.6 Add hover effect to REAP button
+
+
     - Implement hover effect that brightens the `--accent` background color
     - Use CSS filter or lighter shade for hover state
     - Add smooth transition for hover animation
     - Maintain accessibility with proper contrast
     - _Requirements: 1.4 (UI Enhancement)_
 
-- [ ] 13. Redesign tombstone cards with CSS modules
+- [x] 13. Redesign tombstone cards with CSS modules
 
-  - [ ] 13.1 Create Tombstone CSS module file
+
+
+
+
+
+  - [x] 13.1 Create Tombstone CSS module file
+
+
     - Create new file `components/Tombstone.module.css`
     - Set up module structure for tombstone styling
     - _Requirements: 3.3 (UI Enhancement)_
 
-  - [ ] 13.2 Style tombstone with curved top shape
+  - [x] 13.2 Style tombstone with curved top shape
+
+
     - Use CSS `clip-path` property to create curved top tombstone shape
     - Set background color to `var(--panels)`
     - Set border color to `var(--borders)`
     - Add appropriate padding and dimensions
     - _Requirements: 3.3 (UI Enhancement)_
 
-  - [ ] 13.3 Style branch name as prominent text
+  - [x] 13.3 Style branch name as prominent text
+
+
     - Make branch name the most prominent text element
     - Use `var(--text-primary)` color for branch name
     - Set appropriate font size and weight
     - _Requirements: 3.3 (UI Enhancement)_
 
-  - [ ] 13.4 Style commit date as secondary text
+  - [x] 13.4 Style commit date as secondary text
+
+
     - Make date text smaller than branch name
     - Use `var(--text-secondary)` color for date
     - Set appropriate font size and styling
     - _Requirements: 3.3 (UI Enhancement)_
 
-  - [ ] 13.5 Add hover effects to tombstone
+  - [x] 13.5 Add hover effects to tombstone
+
+
     - Implement `transform: translateY(-5px);` on hover
     - Add `box-shadow` using `var(--accent)` color for glow effect
     - Add smooth CSS transition for hover animation
     - _Requirements: 3.3, 9.1 (UI Enhancement)_
 
-  - [ ] 13.6 Update Tombstone component to use CSS module
+  - [x] 13.6 Update Tombstone component to use CSS module
+
+
     - Import styles from `Tombstone.module.css`
     - Replace existing className references with module styles
     - Ensure all functionality remains intact
     - Test hover and click interactions
     - _Requirements: 3.3, 9.1 (UI Enhancement)_
 
-- [ ] 14. Update application icons with react-icons
+- [x] 14. Update application icons with react-icons
 
-  - [ ] 14.1 Update Repo Stats section icons
+
+
+
+
+
+  - [x] 14.1 Update Repo Stats section icons
+
+
     - Import `FaBookDead`, `FaHourglassHalf`, `FaCalendarAlt` from `react-icons/fa`
     - Replace 'Dead Branches' icon with `<FaBookDead />`
     - Replace 'Avg Days' icon with `<FaHourglassHalf />`
@@ -565,13 +637,18 @@
     - Style icons to match the design system
     - _Requirements: All (UI Enhancement)_
 
-  - [ ] 14.2 Update Cleanup Suggestions section icon
+  - [x] 14.2 Update Cleanup Suggestions section icon
+
+
     - Import `FaExclamationTriangle` from `react-icons/fa`
     - Replace title icon with `<FaExclamationTriangle />`
     - Style icon appropriately for the section header
     - _Requirements: All (UI Enhancement)_
 
-  - [ ] 14.3 Review and replace remaining placeholder icons
+  - [x] 14.3 Review and replace remaining placeholder icons
+
+
+
     - Audit the application for any remaining placeholder icons or emojis
     - Replace with appropriate react-icons where applicable
     - Ensure consistent icon styling across the application
