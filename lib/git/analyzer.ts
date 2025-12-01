@@ -70,7 +70,7 @@ export async function analyzeRepository(
       return {
         tempDir: '',
         error: {
-          message: 'Repository analysis timed out after 90 seconds',
+          message: 'Repository analysis timed out. This repository may have too many branches to analyze quickly. Try using a GitHub token for faster API access.',
           code: 'TIMEOUT'
         }
       };
@@ -197,6 +197,11 @@ async function performAnalysis(
           }
           return null;
         } catch (error) {
+          // Silently skip branches that fail (likely due to timeout or network issues)
+          if (error instanceof Error && error.name === 'AbortError') {
+            // Timeout reached, skip this branch
+            return null;
+          }
           console.error(`Failed to check branch ${branch.name}:`, error);
           return null;
         }
