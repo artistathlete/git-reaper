@@ -3,6 +3,7 @@
 import React from 'react';
 import { DeadBranch } from '@/lib/types';
 import styles from './Tombstone.module.css';
+import GraveyardIcon from './GraveyardIcon';
 
 interface TombstoneProps {
   branch: DeadBranch;
@@ -37,7 +38,7 @@ export default function Tombstone({ branch, repositoryUrl, index = 0 }: Tombston
 
   return (
     <div 
-      className={styles.tombstone}
+      className={styles.tombstoneContainer}
       data-testid="tombstone"
       onClick={handleClick}
       role="button"
@@ -52,11 +53,50 @@ export default function Tombstone({ branch, repositoryUrl, index = 0 }: Tombston
         animationDelay,
       }}
     >
-      <div className={styles.tombstoneTop}></div>
-      <div className={styles.tombstoneBody}>
-        <div className={styles.branchName}>{branch.name}</div>
-        <div className={styles.commitDate}>{formatDate(branch.lastCommitDate)}</div>
-      </div>
+      <svg 
+        className={styles.tombstone}
+        viewBox="0 0 200 280" 
+        fill="none" 
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* Ground */}
+        <rect x="0" y="260" width="200" height="20" fill="currentColor" opacity="0.2"/>
+        
+        {/* Tombstone body with rounded top */}
+        <path 
+          d="M30 260 L30 80 Q30 20 100 20 Q170 20 170 80 L170 260 Z" 
+          fill="var(--panels)"
+          stroke="var(--borders)" 
+          strokeWidth="4"
+        />
+        
+        {/* RIP text at top */}
+        <text 
+          x="100" 
+          y="70" 
+          fontSize="20" 
+          fontWeight="bold" 
+          fill="var(--text-secondary)" 
+          textAnchor="middle"
+          opacity="0.6"
+        >
+          RIP
+        </text>
+        
+        {/* Branch name */}
+        <foreignObject x="40" y="95" width="120" height="100">
+          <div className={styles.branchName}>
+            {branch.name}
+          </div>
+        </foreignObject>
+        
+        {/* Commit date */}
+        <foreignObject x="40" y="200" width="120" height="50">
+          <div className={styles.commitDate}>
+            Last commit: {formatDate(branch.lastCommitDate)}
+          </div>
+        </foreignObject>
+      </svg>
     </div>
   );
 }

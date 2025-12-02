@@ -52,10 +52,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       async start(controller) {
         let tokenUsed = 'none';
         
+        // Adaptive timeout: base 3 minutes, automatically extends based on branch count
+        const baseTimeout = 180000; // 3 minutes
+        
         // Try without token first (GitHub's free 60 requests)
         let analysisResult = await analyzeRepository({
           repoUrl: githubUrl,
-          timeout: 90000,
+          timeout: baseTimeout,
+          adaptiveTimeout: true, // Enable automatic timeout extension
           githubToken: githubToken || undefined,
           onProgress: (current, total, found, status) => {
             const progressData = JSON.stringify({
@@ -74,7 +78,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           tokenUsed = 'server';
           analysisResult = await analyzeRepository({
             repoUrl: githubUrl,
-            timeout: 90000,
+            timeout: baseTimeout,
+            adaptiveTimeout: true,
             githubToken: process.env.GITHUB_TOKEN,
             onProgress: (current, total, found, status) => {
               const progressData = JSON.stringify({

@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "Auto-Refresh on Spec Change",
+  "description": "Automatically runs 'npm install' when the git-reaper specification file is saved to ensure all project dependencies are up-to-date",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      ".kiro/specs/git-reaper/spec.md"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "The project specification file was just saved. Run the 'npm install' command in the terminal from the project root to ensure all project dependencies are up-to-date."
+  }
+}

@@ -5,6 +5,7 @@ export interface AnalyzerOptions {
   timeout: number;
   onProgress?: (current: number, total: number, found: number, status?: string) => void;
   githubToken?: string;
+  adaptiveTimeout?: boolean; // Enable adaptive timeout based on branch count
 }
 
 export interface AnalyzerResult {
@@ -46,14 +47,29 @@ interface GitHubComparison {
 export async function analyzeRepository(
   options: AnalyzerOptions
 ): Promise<AnalyzerResult> {
-  const { repoUrl, timeout, onProgress, githubToken } = options;
+  const { repoUrl, timeout, onProgress, githubToken, adaptiveTimeout = true } = options;
   
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  let currentTimeout = timeout;
+  let timeoutId = setTimeout(() => controller.abort(), currentTimeout);
+  
+  // Callback to adjust timeout dynamically
+  const adjustableProgress = adaptiveTimeout && onProgress 
+    ? (current: number, total: number, found: number, status?: string) => {
+        // When we first learn the total, adjust timeout
+        if (total > 0 && current === 0) {
+          clearTimeout(timeoutId);
+          // Base 3 minutes + 1 second per branch
+          currentTimeout = Math.max(timeout, 180000 + (total * 1000));
+          timeoutId = setTimeout(() => controller.abort(), currentTimeout);
+        }
+        onProgress(current, total, found, status);
+      }
+    : onProgress;
   
   try {
     const result = await Promise.race([
-      performAnalysis(repoUrl, controller.signal, onProgress, githubToken),
+      performAnalysis(repoUrl, controller.signal, adjustableProgress, githubToken),
       new Promise<never>((_, reject) => {
         controller.signal.addEventListener('abort', () => {
           reject(new Error('Analysis timeout exceeded'));

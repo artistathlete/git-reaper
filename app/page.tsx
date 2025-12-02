@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FaSkull, FaBookDead, FaHourglassHalf, FaCalendarAlt, FaExclamationTriangle } from 'react-icons/fa';
+import { FaGhost, FaBookDead, FaClock, FaCalendarAlt, FaMagic } from 'react-icons/fa';
 import RepoInput from '@/components/RepoInput';
 import Graveyard from '@/components/Graveyard';
 import FloatingGhosts from '@/components/FloatingGhosts';
@@ -96,9 +96,12 @@ export default function Home() {
       <FloatingGhosts />
       <main>
         <div className="header">
-        <h1><FaSkull /> Git Reaper <FaSkull /></h1>
-        <p>Find dead branches in your GitHub repositories</p>
-      </div>
+          {/* Replaced Skull with friendly Ghost */}
+          <h1>
+            <FaGhost className="bounce" /> Git Reaper
+          </h1>
+          <p>The cozy place where dead branches rest in peace.</p>
+        </div>
 
       <RepoInput onSubmit={handleSubmit} isLoading={isLoading} />
 
@@ -256,27 +259,11 @@ export default function Home() {
             <div className="ghost-loader ghost-2">👻</div>
             <div className="ghost-loader ghost-3">👻</div>
           </div>
-          <p className="loading-text">🔮 Summoning the dead branches... 🔮</p>
+          <div className="loading-text">✨ Summoning Branches... ✨</div>
           {progress && (
-            <div className="progress-stats">
-              {progress.status && (
-                <p className="progress-status">
-                  💀 {progress.status}
-                </p>
-              )}
-              <p className="progress-text">
-                {progress.total > 0 ? `⚰️ Branch ${progress.current} of ${progress.total}` : '🕯️ Initializing...'}
-              </p>
-              <p className="progress-found">
-                🪦 Found {progress.found} merged {progress.found === 1 ? 'branch' : 'branches'} so far
-              </p>
-              <div className="progress-bar">
-                <div 
-                  className="progress-fill" 
-                  style={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
+            <p style={{ marginTop: '1rem', color: 'var(--text-secondary)' }}>
+              Checking {progress.current} of {progress.total}... Found {progress.found}
+            </p>
           )}
         </div>
       )}
@@ -286,50 +273,40 @@ export default function Home() {
           <Graveyard deadBranches={results} repositoryUrl={repositoryUrl} />
           
           {results.length > 0 && (
-            <div className="suggestions-section">
-              <h2>📊 Repository Stats</h2>
+            <div className="suggestions-section" style={{ maxWidth: '800px', margin: '3rem auto' }}>
+              <h2 style={{ textAlign: 'center', marginBottom: '1.5rem' }}>Graveyard Stats</h2>
               <div className="stats-grid">
                 <div className="stat-card">
-                  <div className="stat-icon"><FaBookDead /></div>
+                  <div className="stat-icon">
+                    <FaBookDead />
+                  </div>
                   <div className="stat-number">{results.length}</div>
-                  <div className="stat-label">Dead Branches</div>
+                  <div className="stat-label">Ghosts Found</div>
                 </div>
                 <div className="stat-card">
-                  <div className="stat-icon"><FaHourglassHalf /></div>
+                  <div className="stat-icon">
+                    <FaClock />
+                  </div>
                   <div className="stat-number">
                     {Math.round((results.reduce((sum, branch) => {
-                      const daysSince = Math.floor((Date.now() - new Date(branch.lastCommitDate).getTime()) / (1000 * 60 * 60 * 24));
+                      const daysSince = Math.floor(
+                        (Date.now() - new Date(branch.lastCommitDate).getTime()) / (1000 * 60 * 60 * 24)
+                      );
                       return sum + daysSince;
                     }, 0) / results.length))}
                   </div>
-                  <div className="stat-label">Avg Days Since Last Commit</div>
+                  <div className="stat-label">Avg. Days Inactive</div>
                 </div>
                 <div className="stat-card">
-                  <div className="stat-icon"><FaCalendarAlt /></div>
-                  <div className="stat-number">
-                    {(() => {
-                      const oldest = results.reduce((oldest, branch) => {
-                        const date = new Date(branch.lastCommitDate);
-                        return date < oldest ? date : oldest;
-                      }, new Date(results[0].lastCommitDate));
-                      return Math.floor((Date.now() - oldest.getTime()) / (1000 * 60 * 60 * 24));
-                    })()}
+                  <div className="stat-icon">
+                    <FaMagic />
                   </div>
-                  <div className="stat-label">Days Since Oldest Branch</div>
+                  <div className="stat-number">
+                    {/* Simple logic to just show 'Ready' or similar could go here */}
+                    Clean
+                  </div>
+                  <div className="stat-label">Status</div>
                 </div>
-              </div>
-              
-              <div className="suggestions-box">
-                <h3><FaExclamationTriangle /> Cleanup Suggestions</h3>
-                <ul>
-                  <li>Review each branch before deletion to ensure no important work is lost</li>
-                  <li>Consider creating a backup or tag before removing branches</li>
-                  <li>Use <code>git push origin --delete &lt;branch-name&gt;</code> to remove remote branches</li>
-                  <li>Set up branch protection rules to prevent accidental deletions of important branches</li>
-                  {results.length > 10 && (
-                    <li>With {results.length} dead branches, consider implementing a regular cleanup schedule</li>
-                  )}
-                </ul>
               </div>
             </div>
           )}
