@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
 import React from 'react';
+import * as fc from 'fast-check';
 import FloatingGhosts from './FloatingGhosts';
 
 describe('FloatingGhosts Component', () => {
@@ -54,5 +55,39 @@ describe('FloatingGhosts Component', () => {
       expect(ghost.style.fontSize).toBeTruthy();
       expect(ghost.style.fontSize).toMatch(/rem$/);
     });
+  });
+
+  // Property-Based Test
+  // **Feature: landing-page-redesign, Property 7: FloatingGhosts Speed Control**
+  // **Validates: Requirements 6.6**
+  it('property: all ghost animations have controlled slow speeds (>= 3s)', () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 1, max: 100 }), // Number of test iterations
+        (_iteration) => {
+          // Render the component
+          const { container } = render(<FloatingGhosts />);
+          
+          // Get all ghost elements
+          const ghosts = container.querySelectorAll('.floating-ghost') as NodeListOf<HTMLElement>;
+          
+          // For any ghost element, the animation duration should be >= 3s
+          ghosts.forEach((ghost) => {
+            const durationStr = ghost.style.animationDuration;
+            expect(durationStr).toBeTruthy();
+            expect(durationStr).toMatch(/s$/);
+            
+            // Extract numeric value from duration string (e.g., "15.5s" -> 15.5)
+            const durationValue = parseFloat(durationStr.replace('s', ''));
+            
+            // Verify duration is at least 3 seconds (prevents erratic fast motion)
+            expect(durationValue).toBeGreaterThanOrEqual(3);
+          });
+          
+          return true;
+        }
+      ),
+      { numRuns: 100 } // Run 100 iterations as specified in design doc
+    );
   });
 });

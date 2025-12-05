@@ -70,7 +70,7 @@ Click any of these popular repos to see Git Reaper in action:
 - Next.js (vercel/next.js)
 - Node.js (nodejs/node)
 - TensorFlow (tensorflow/tensorflow)
-- Linux Kernel (torvalds/linux)
+- Kubernetes (kubernetes/kubernetes)
 
 ## 🔑 Optional: GitHub Token
 
