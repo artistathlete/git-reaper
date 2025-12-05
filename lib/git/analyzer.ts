@@ -120,26 +120,56 @@ async function performAnalysis(
   const [, owner, repo] = match;
   const baseUrl = `https://api.github.com/repos/${owner}/${repo}`;
   
-  // Setup headers with optional token
-  const headers: HeadersInit = {
-    'Accept': 'application/vnd.github.v3+json'
+  // Create a prioritized list of tokens
+  const tokens = [
+    githubToken, 
+    process.env.GITHUB_TOKEN_1, 
+    process.env.GITHUB_TOKEN_2
+  ].filter(Boolean) as string[];
+  
+  let currentTokenIndex = 0;
+
+  // Wrapper for fetch that handles token switching
+  const fetchWithRetry = async (url: string) => {
+    // If no tokens are available at all, make a single unauthenticated request
+    if (tokens.length === 0) {
+      return await fetch(url, { signal, headers: { 'Accept': 'application/vnd.github.v3+json' } });
+    }
+
+    let response = await fetch(url, {
+      signal,
+      headers: {
+        'Accept': 'application/vnd.github.v3+json',
+        'Authorization': `Bearer ${tokens[currentTokenIndex]}`
+      }
+    });
+
+    // Check for rate limit error
+    if (response.status === 403 && response.headers.get('x-ratelimit-remaining') === '0') {
+      // If there's another token to try, switch to it
+      if (currentTokenIndex < tokens.length - 1) {
+        currentTokenIndex++;
+        console.log(`GitHub rate limit hit. Switching to token #${currentTokenIndex + 1}`);
+        // Retry the request with the new token
+        response = await fetch(url, {
+          signal,
+          headers: {
+            'Accept': 'application/vnd.github.v3+json',
+            'Authorization': `Bearer ${tokens[currentTokenIndex]}`
+          }
+        });
+      }
+    }
+    return response;
   };
-  if (githubToken) {
-    headers['Authorization'] = `Bearer ${githubToken}`;
-  }
   
   // Get default branch
   if (onProgress) onProgress(0, 0, 0, 'Connecting to GitHub API...');
-  const repoResponse = await fetch(baseUrl, { signal, headers });
+  const repoResponse = await fetchWithRetry(baseUrl);
   if (!repoResponse.ok) {
     if (repoResponse.status === 403) {
-      const rateLimitResponse = await fetch('https://api.github.com/rate_limit', { headers });
-      if (rateLimitResponse.ok) {
-        const rateLimitData = await rateLimitResponse.json();
-        if (rateLimitData.resources?.core?.remaining === 0) {
-          throw new Error('GitHub API rate limit exceeded. Please provide a GitHub token or wait for the rate limit to reset.');
-        }
-      }
+      // Even after retries, we are rate limited.
+      throw new Error('GitHub API rate limit exceeded. Please provide a valid GitHub token or wait for the rate limit to reset.');
     }
     throw new Error(`Failed to fetch repository info: ${repoResponse.statusText}`);
   }
@@ -153,7 +183,7 @@ async function performAnalysis(
   let hasMore = true;
   
   while (hasMore) {
-    const branchesResponse = await fetch(`${baseUrl}/branches?per_page=100&page=${page}`, { signal, headers });
+    const branchesResponse = await fetchWithRetry(`${baseUrl}/branches?per_page=100&page=${page}`);
     if (!branchesResponse.ok) {
       throw new Error(`Failed to fetch branches: ${branchesResponse.statusText}`);
     }
@@ -182,9 +212,8 @@ async function performAnalysis(
       batch.map(async (branch) => {
         try {
           // Compare branch with default branch
-          const compareResponse = await fetch(
-            `${baseUrl}/compare/${defaultBranch}...${branch.name}`,
-            { signal, headers }
+          const compareResponse = await fetchWithRetry(
+            `${baseUrl}/compare/${defaultBranch}...${branch.name}`
           );
           
           if (!compareResponse.ok) return null;
@@ -194,9 +223,8 @@ async function performAnalysis(
           // If ahead_by is 0, the branch is fully merged
           if (comparison.ahead_by === 0) {
             // Get commit details
-            const commitResponse = await fetch(
-              `${baseUrl}/commits/${branch.commit.sha}`,
-              { signal, headers }
+            const commitResponse = await fetchWithRetry(
+              `${baseUrl}/commits/${branch.commit.sha}`
             );
             
             if (commitResponse.ok) {

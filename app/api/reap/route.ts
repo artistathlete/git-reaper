@@ -73,25 +73,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           }
         });
 
-        // If rate limited and no user token, try with server token
-        if (analysisResult.error?.message.includes('rate limit') && !githubToken && process.env.GITHUB_TOKEN) {
-          tokenUsed = 'server';
-          analysisResult = await analyzeRepository({
-            repoUrl: githubUrl,
-            timeout: baseTimeout,
-            adaptiveTimeout: true,
-            githubToken: process.env.GITHUB_TOKEN,
-            onProgress: (current, total, found, status) => {
-              const progressData = JSON.stringify({
-                type: 'progress',
-                current,
-                total,
-                found,
-                status
-              });
-              controller.enqueue(encoder.encode(`data: ${progressData}\n\n`));
-            }
-          });
         } else if (githubToken) {
           tokenUsed = 'user';
         }
