@@ -3819,8 +3819,8 @@ body::after {
   position: relative;
   width: 44px;
   height: 24px;
-  background: transparent;
-  border: 2px solid var(--borders);
+  background: rgba(255, 255, 255, 0.1); /* Transparent background */
+  border: none;
   border-radius: 12px;
   cursor: pointer;
   transition: all var(--duration-normal) var(--ease-out);
@@ -3829,7 +3829,7 @@ body::after {
 }
 
 .toggle-switch:hover {
-  border-color: var(--accent-purple);
+  background: rgba(255, 255, 255, 0.2);
 }
 
 .toggle-switch:focus {
@@ -3839,7 +3839,6 @@ body::after {
 
 .toggle-switch.active {
   background: var(--accent-purple);
-  border-color: var(--accent-purple);
 }
 
 .toggle-switch.active:hover {
@@ -3848,19 +3847,18 @@ body::after {
 
 .toggle-slider {
   position: absolute;
-  top: 1px;
+  top: 2px;
   left: 2px;
-  width: 18px;
-  height: 18px;
-  background: var(--text-primary);
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
   border-radius: 50%;
   transition: transform var(--duration-normal) var(--ease-out);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .toggle-switch.active .toggle-slider {
-  transform: translateX(18px);
-  background: var(--bg-deep);
+  transform: translateX(20px);
 }
 
 
