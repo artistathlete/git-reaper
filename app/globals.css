@@ -3805,22 +3805,22 @@ body::after {
 .toggle-icon {
   font-size: var(--text-base);
   transition: all var(--duration-normal);
-  opacity: 0.4;
+  opacity: 0.6;
   filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.2));
 }
 
 .toggle-label:hover .toggle-icon {
-  opacity: 0.7;
+  opacity: 1;
   filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.4));
-  transform: scale(1.05);
+  transform: scale(1.1);
 }
 
 .toggle-switch {
   position: relative;
   width: 44px;
   height: 24px;
-  background: var(--borders);
-  border: none;
+  background: transparent;
+  border: 2px solid var(--borders);
   border-radius: 12px;
   cursor: pointer;
   transition: all var(--duration-normal) var(--ease-out);
@@ -3829,7 +3829,7 @@ body::after {
 }
 
 .toggle-switch:hover {
-  background: #4a4560;
+  border-color: var(--accent-purple);
 }
 
 .toggle-switch:focus {
@@ -3839,26 +3839,28 @@ body::after {
 
 .toggle-switch.active {
   background: var(--accent-purple);
+  border-color: var(--accent-purple);
 }
 
 .toggle-switch.active:hover {
-  background: #9d6fff;
+  filter: brightness(1.2);
 }
 
 .toggle-slider {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 20px;
-  height: 20px;
-  background: #ffffff;
+  width: 18px;
+  height: 18px;
+  background: var(--text-primary);
   border-radius: 50%;
   transition: transform var(--duration-normal) var(--ease-out);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .toggle-switch.active .toggle-slider {
   transform: translateX(20px);
+  background: var(--bg-deep);
 }
 
 
